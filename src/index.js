@@ -3,6 +3,7 @@
 // import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./db/index.js";
+import { app } from "./app.js";
 // const app = express();
 // const PORT = process.env.PORT;
 
@@ -10,7 +11,13 @@ dotenv.config({
   path: "./env",
 });
 
-connectDB();
+const PORT = process.env.PORT;
+
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => console.log(`SERVER IS LISTENING AT PORT: ${PORT}`));
+  })
+  .catch((error) => console.log(`ERROR WHILE CONNECTING TO DB: ${error}`));
 
 // (async () => {
 //   try {
