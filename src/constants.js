@@ -1,1 +1,1 @@
-export const DB_NAME="deepUtube"
+export const DB_NAME="utube"
