@@ -1,7 +1,12 @@
 import { Router } from "express";
 const userRouter = Router();
-import { registerUser } from "../controllers/user.controller.js";
+import {
+  registerUser,
+  loginUser,
+  logoutUser,
+} from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 userRouter.route("/register").post(
   upload.fields([
@@ -17,4 +22,7 @@ userRouter.route("/register").post(
   registerUser
 );
 
+userRouter.route("/login").post(loginUser);
+
+userRouter.route("/logout").post(verifyJWT, logoutUser);
 export { userRouter };
