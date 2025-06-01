@@ -3,6 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandlerTwo.js";
 import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import jwt from "jsonwebtoken";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -84,12 +85,14 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
-  if (!username || !email)
+  // console.log(username, password);
+
+  if (!username && !email)
     throw new ApiError(400, "username or email is required!!");
   const user = await User.findOne({
     $or: [{ username }, { email }],
   });
-  if (!user) throw new ApiError(404, "user not found!!");
+  if (!user) throw new ApiError(404, "usser not found!!");
   const isPasswordValid = await user.isPasswordCorrect(password);
   if (!isPasswordValid) throw new ApiError(401, "Invalid user credentials!!");
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
@@ -143,4 +146,38 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "User Logged out successfully", {}));
 });
 
-export { registerUser, loginUser, logoutUser };
+const generateNewAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken =
+    req.cookies?.refreshToken || req.body?.refreshToken;
+
+  if (!incomingRefreshToken)
+    throw new ApiError(401, "Refresh Token is required!!");
+  try {
+    const decodedRefreshToken = jwt.verify(incomingRefreshToken);
+    const user = await User.findById(decodedRefreshToken?._id);
+    if (!user) throw new ApiError(401, "Invalid Refresh Token!!");
+    if (incomingRefreshToken !== user.refreshToken)
+      throw new ApiError(401, "Refresh Tokens were not identical!!");
+    const { refreshToken, accessToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken)
+      .cookie("refreshToken", refreshToken)
+      .json(
+        new ApiResponse(200, "new refresh token has been generated", {
+          accessToken,
+          refreshToken,
+        })
+      );
+  } catch (error) {
+    throw new ApiError(
+      401,
+      "something went wrong, while creating a new refresh token"
+    );
+  }
+});
+
+export { registerUser, loginUser, logoutUser, generateNewAccessToken };
