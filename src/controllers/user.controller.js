@@ -257,6 +257,86 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, "coverImage updated successfully", user));
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+  if (!username) throw new ApiError(400, "username is missing!!");
+  const channelData = await User.aggregate([
+    // match operator to fetch the user to return his/her channel profile
+    {
+      $match: {
+        username: username.toLowerCase(),
+      },
+    },
+    // count of people who were following me.
+    {
+      $lookup: {
+        from: "subscribers",
+        localField: "_id",
+        foreignField: "channel",
+        as: "mySubscribers",
+      },
+    },
+    // count of people whom I was following.
+    {
+      // count of people whom I was following.
+      $lookup: {
+        from: "subscribers",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "iSubscribedTo",
+      },
+    },
+    // adding subscribersCount,iSubscribedChannelsCnt, isSubscribed flag
+    {
+      $addFields: {
+        mySubscribersCount: {
+          $size: "$mySubscribers",
+        },
+        iSubscribedToCount: {
+          $size: "$iSubscribedTo",
+        },
+        // returning a boolean value, based on which the UI dev will display either
+        // subscribed or subscribe
+        isSubsribed: {
+          // condition operator had three parts
+          // 1. IF condition
+          // 2. THEN, if IF condition was true, it'll return true
+          // 3. returns the opposite of IF condition
+          $cond: {
+            if: { $in: [req.user?._id, "$mySubscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    // returning the fields which we want to send to the frontend
+    {
+      $project: {
+        fullName: 1,
+        username: 1,
+        mySubscribersCount: 1,
+        iSubscribedToCount: 1,
+        isSubsribed: 1,
+        avatar: 1,
+        coverImage: 1,
+        email: 1,
+      },
+    },
+  ]);
+
+  if (!channelData?.length) throw new ApiError("channel does not exists!!");
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channelData[0],
+        "channel data has been fetched successfully!!"
+      )
+    );
+});
+
 export {
   registerUser,
   loginUser,
@@ -267,4 +347,5 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
 };
