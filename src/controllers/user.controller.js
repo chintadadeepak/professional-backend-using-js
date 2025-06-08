@@ -128,17 +128,24 @@ const logoutUser = asyncHandler(async (req, res) => {
     secure: true,
   };
 
-  User.findByIdAndUpdate(
+  await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: {
-        refreshToken: undefined,
+      // initially I tried to set the refreshToken to undefined, but it was not working
+      // to avoid that, I changed the refreshToken to 1
+      /* $set: {
+      //   refreshToken: undefined,
+      // }, */
+      $unset: {
+        refreshToken: 1,
       },
     },
     {
       new: true,
     }
   );
+
+  console.log("Changes were made successfully!!");
 
   return res
     .status(200)
